@@ -3,6 +3,8 @@ Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TinyHandler", "Source\TinyHandler\TinyHandler.csproj", "{A823406C-D9B3-4524-BC02-9BC7C3115786}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TinyHandler.Samples", "Source\TinyHandler.Samples\TinyHandler.Samples.csproj", "{F79D9FFE-0E40-4381-84DD-B1C8C614C978}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -13,6 +15,10 @@ Global
 		{A823406C-D9B3-4524-BC02-9BC7C3115786}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A823406C-D9B3-4524-BC02-9BC7C3115786}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A823406C-D9B3-4524-BC02-9BC7C3115786}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F79D9FFE-0E40-4381-84DD-B1C8C614C978}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F79D9FFE-0E40-4381-84DD-B1C8C614C978}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F79D9FFE-0E40-4381-84DD-B1C8C614C978}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F79D9FFE-0E40-4381-84DD-B1C8C614C978}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -12,17 +12,17 @@ namespace TinyHandler
         private static readonly List<Type> OnProcessErrorBehaviors = new List<Type>();
         private static readonly List<Type> DispatchBehaviors = new List<Type>();
 
-        public void AddProcessBehaviors<TProcessBehavior>() where TProcessBehavior : IProcessBehavior
+        public static void AddProcessBehaviors<TProcessBehavior>() where TProcessBehavior : IProcessBehavior
         {
             ProcessBehaviors.Add(typeof(TProcessBehavior));
         }
 
-        public void AddOnProcessErrorBehaviors<TOnProcessErrorBehavior>() where TOnProcessErrorBehavior : IOnProcessErrorBehavior
+        public static void AddOnProcessErrorBehaviors<TOnProcessErrorBehavior>() where TOnProcessErrorBehavior : IOnProcessErrorBehavior
         {
             ProcessBehaviors.Add(typeof(TOnProcessErrorBehavior));
         }
 
-        public void AddDispatchBehaviorss<TDispatchBehavior>() where TDispatchBehavior : IDispatchBehavior
+        public static void AddDispatchBehaviorss<TDispatchBehavior>() where TDispatchBehavior : IDispatchBehavior
         {
             ProcessBehaviors.Add(typeof(TDispatchBehavior));
         }
