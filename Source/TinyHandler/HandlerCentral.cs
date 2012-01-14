@@ -29,55 +29,54 @@ namespace TinyHandler
 
         public static void Process<T>(T objectToHandle)
         {
-            using (var nested = ObjectFactory.Container.GetNestedContainer())
+            var container = ObjectFactory.Container;
+            
+            var handlerModule = container.GetInstance<HandlerModule<T>>();
+
+            try
             {
-                var handlerModule = nested.GetInstance<HandlerModule<T>>();
+                IProcessBehavior startOfBehaviorChain = new ProcessBehaviorExecuter<T>(handlerModule.Process);
 
-                try
+                var reveresedBehaviorChain = ProcessBehaviors;
+                reveresedBehaviorChain.Reverse();
+
+                foreach (var behviorType in reveresedBehaviorChain)
                 {
-                    IProcessBehavior startOfBehaviorChain = new ProcessBehaviorExecuter<T>(handlerModule.Process);
+                    var newBehaviour = container.GetInstance(behviorType) as IProcessBehavior;
 
-                    var reveresedBehaviorChain = ProcessBehaviors;
-                    reveresedBehaviorChain.Reverse();
-
-                    foreach (var behviorType in reveresedBehaviorChain)
-                    {
-                        var newBehaviour = nested.GetInstance(behviorType) as IProcessBehavior;
-
-                        if (newBehaviour == null)
-                            continue;
+                    if (newBehaviour == null)
+                        continue;
                         
-                        newBehaviour.NextBehavior = startOfBehaviorChain;
-                        startOfBehaviorChain = newBehaviour;
-
-                    }
-
-                    startOfBehaviorChain.Invoke(objectToHandle);
+                    newBehaviour.NextBehavior = startOfBehaviorChain;
+                    startOfBehaviorChain = newBehaviour;
 
                 }
-                catch (Exception exception)
+
+                startOfBehaviorChain.Invoke(objectToHandle);
+
+            }
+            catch (Exception exception)
+            {
+                IOnProcessErrorBehavior startOfOnProcessBehaviorChain =
+                    new OnProcessErrorBehaviorExecuter<T>(handlerModule.OnProcessError);
+
+                var reveresedBehaviorChain = OnProcessErrorBehaviors;
+                reveresedBehaviorChain.Reverse();
+
+                foreach (var behviorType in reveresedBehaviorChain)
                 {
-                    IOnProcessErrorBehavior startOfOnProcessBehaviorChain =
-                        new OnProcessErrorBehaviorExecuter<T>(handlerModule.OnProcessError);
-
-                    var reveresedBehaviorChain = OnProcessErrorBehaviors;
-                    reveresedBehaviorChain.Reverse();
-
-                    foreach (var behviorType in reveresedBehaviorChain)
-                    {
-                        var newBehaviour = nested.GetInstance(behviorType) as IOnProcessErrorBehavior;
+                    var newBehaviour = container.GetInstance(behviorType) as IOnProcessErrorBehavior;
                         
-                        if(newBehaviour == null)
-                            continue;
+                    if(newBehaviour == null)
+                        continue;
                         
-                        newBehaviour.NextBehavior = startOfOnProcessBehaviorChain;
-                        startOfOnProcessBehaviorChain = newBehaviour;
+                    newBehaviour.NextBehavior = startOfOnProcessBehaviorChain;
+                    startOfOnProcessBehaviorChain = newBehaviour;
 
-                    }
-
-                    startOfOnProcessBehaviorChain.Invoke(objectToHandle, exception);
-                    throw;
                 }
+
+                startOfOnProcessBehaviorChain.Invoke(objectToHandle, exception);
+                throw;
             }
 
             ThreadPool.QueueUserWorkItem(x => Dispatch(objectToHandle));
