@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("TinyHandler")]
 [assembly: AssemblyDescription("A tiny handler that is compositional and takes a functional aproach to handling commands, events or whatever you need handled.")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Emil Cardell")]
+[assembly: AssemblyCompany("EmilCardell")]
 [assembly: AssemblyProduct("TinyHandler")]
 [assembly: AssemblyCopyright("Copyright ©  2012")]
 [assembly: AssemblyTrademark("")]
