@@ -37,11 +37,11 @@ namespace TinyHandler.Samples
     }
 
 
-    public class TimerProcessBehvior : BasicProcessBehaviour
+    public class TimerProcessBehavior : BasicProcessBehaviour
     {
         private readonly FakeLogger _fakeLogger;
 
-        public TimerProcessBehvior(FakeLogger fakeLogger)
+        public TimerProcessBehavior(FakeLogger fakeLogger)
         {
             _fakeLogger = fakeLogger;
         }
