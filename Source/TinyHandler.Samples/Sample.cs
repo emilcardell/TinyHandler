@@ -28,11 +28,15 @@ namespace TinyHandler.Samples
         
         public TestObjectHandlerModule(FakeRepo repo, FakeBus bus, FakeLogger logger)
         {
-            Process = testObjectToHandle => { repo.Save(testObjectToHandle); };
+            Process = testObjectToHandle => 
+            { 
+                repo.Save(testObjectToHandle);
+                return testObjectToHandle;
+            };
 
             Dispatch = testObjectToDispatch => { bus.Publish(testObjectToDispatch); };
 
-            OnProcessError = (testObjectThatFailed, exception) => { logger.LogSpecialCase(exception); };
+            OnProcessError = (testObjectThatFailed, exception) => logger.LogSpecialCase(exception);
         }
     }
 
@@ -46,11 +50,12 @@ namespace TinyHandler.Samples
             _fakeLogger = fakeLogger;
         }
 
-        public override void Invoke(object handledObject)
+        public override object Invoke(object handledObject)
         {
             _fakeLogger.StartLog();
-            InvokeNext(handledObject);
+            var result = InvokeNext(handledObject);
             _fakeLogger.EndLog();
+            return result;
         }
     }
     

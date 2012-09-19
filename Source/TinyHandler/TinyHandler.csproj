@@ -41,6 +41,7 @@
   <ItemGroup>
     <Compile Include="HandlerCentral.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ReturnValue.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

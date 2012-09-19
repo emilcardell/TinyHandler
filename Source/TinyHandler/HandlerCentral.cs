@@ -31,6 +31,11 @@ namespace TinyHandler
 
         public static void Process<T>(T objectToHandle)
         {
+            Process<T, object>(objectToHandle);
+        }
+
+        public static TOut Process<T, TOut>(T objectToHandle)
+        {
             var handlerModule = Container.GetInstance<HandlerModule<T>>();
 
             try
@@ -52,7 +57,7 @@ namespace TinyHandler
 
                 }
 
-                startOfBehaviorChain.Invoke(objectToHandle);
+                return (TOut)startOfBehaviorChain.Invoke(objectToHandle) ;
 
             }
             catch (Exception exception)
@@ -108,17 +113,19 @@ namespace TinyHandler
 
     public class ProcessBehaviorExecuter<T> : IProcessBehavior
     {
-        public ProcessBehaviorExecuter(Action<T> processAction)
+        public ProcessBehaviorExecuter(Func<T, object> processAction)
         {
             ProcessAction = processAction;
         }
         public IProcessBehavior NextBehavior { get; set; }
-        public Action<T> ProcessAction { get; set; }
+        public Func<T, object> ProcessAction { get; set; }
 
-        public void Invoke(object handledObject)
+        public object Invoke(object handledObject)
         {
             if(ProcessAction != null)
-                ProcessAction.Invoke((T)handledObject);
+                return ProcessAction.Invoke((T)handledObject);
+
+            return ReturnValue.Empty;
         }
     }
 
@@ -158,7 +165,7 @@ namespace TinyHandler
 
     public abstract class HandlerModule<T>
     {
-        public Action<T> Process { get; set; }
+        public Func<T, object> Process { get; set; }
         public Action<T> Dispatch { get; set; }
         public Action<T, Exception> OnProcessError { get; set; }
     }
@@ -167,19 +174,21 @@ namespace TinyHandler
     {
         public IProcessBehavior NextBehavior { get; set; }
 
-        public abstract void Invoke(object handledObject);
+        public abstract object Invoke(object handledObject);
 
-        public void InvokeNext(object handledObject)
+        public object InvokeNext(object handledObject)
         {
             if (NextBehavior != null)
-                NextBehavior.Invoke(handledObject);
+                return NextBehavior.Invoke(handledObject);
+
+            return null;
         }
     }
 
     public interface IProcessBehavior
     {
         IProcessBehavior NextBehavior { get; set; }
-        void Invoke(object handledObject);
+        object Invoke(object handledObject);
     }
 
 
