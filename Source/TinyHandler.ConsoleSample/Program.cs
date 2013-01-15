@@ -1,40 +1,58 @@
 ﻿using System;
 using StructureMap;
+using System.Threading;
 
-namespace TinyHandler.Samples
+namespace TinyHandler.ConsoleSample
 {
-    public class Sample
+    public class Program
     {
-        public static string SubscriptionOne;
-        public static bool SubscriptionTwo;
-
-        public Sample()
+        static void Main(string[] args)
         {
             //Run once
             Setup();
 
             HandlerCentral.Process(new TestObject());
+
+            Thread.Sleep(500);
+
+            Console.Write(ConsoleOut);
+
+            Thread.Sleep(2000);
         }
 
-        public void Setup()
+        public static string ConsoleOut;
+       
+       
+
+        public static void Setup()
         {
-            ObjectFactory.Configure(x => x.Scan(y => y.AssemblyContainingType<FakeLogger>()));
+            ObjectFactory.Configure(x => x.Scan(y =>
+                {
+                    y.AssemblyContainingType<TestObjectProcessModule>();
+                    y.IncludeNamespaceContainingType<TestObjectProcessModule>();
+                    y.AddAllTypesOf<IProcessor>();
+                    y.AddAllTypesOf<ISubscription>();
+                    y.WithDefaultConventions();
+                }
+                ));
             HandlerCentral.AddProcessBehaviors<TimerProcessBehavior>();
         }
     }
 
-    public class TestObject{}
+    
+
+    public class TestObject { }
 
     public class TestObjectProcessModule : Processor<TestObject>
     {
-        
+
         public TestObjectProcessModule(FakeRepo repo, FakeBus bus, FakeLogger logger)
         {
-            Process = testObjectToHandle => 
-            { 
+            Process = testObjectToHandle =>
+            {
                 repo.Save(testObjectToHandle);
                 return testObjectToHandle;
-            };          
+            };
 
             OnProcessError = (testObjectThatFailed, exception) => logger.LogSpecialCase(exception);
         }
@@ -46,7 +64,7 @@ namespace TinyHandler.Samples
         {
             OnProcessed = testEvent =>
             {
-                Sample.SubscriptionOne = "Test";
+                Program.ConsoleOut = "TestSubscription ran";
             };
         }
     }
@@ -69,11 +87,11 @@ namespace TinyHandler.Samples
             return result;
         }
     }
-    
+
     public class FakeLogger
     {
-        public void StartLog(){}
-        public void EndLog(){}
+        public void StartLog() { }
+        public void EndLog() { }
         public void LogSpecialCase(Exception exception) { }
     }
 
@@ -86,5 +104,4 @@ namespace TinyHandler.Samples
     {
         public void Publish(object objectToPublish) { }
     }
-
 }

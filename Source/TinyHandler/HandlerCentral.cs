@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using StructureMap;
 
@@ -10,7 +11,7 @@ namespace TinyHandler
 
         private static readonly List<Type> ProcessBehaviors = new List<Type>();
         private static readonly List<Type> OnProcessErrorBehaviors = new List<Type>();
-        private static readonly List<Type> DispatchBehaviors = new List<Type>();
+        private static readonly List<Type> SubscriptionBehaviors = new List<Type>();
 
         public static IContainer Container = ObjectFactory.Container;
 
@@ -24,9 +25,9 @@ namespace TinyHandler
             ProcessBehaviors.Add(typeof(TOnProcessErrorBehavior));
         }
 
-        public static void AddDispatchBehaviorss<TDispatchBehavior>() where TDispatchBehavior : IDispatchBehavior
+        public static void AddSubscriptionBehaviorss<TSubscriptionBehavior>() where TSubscriptionBehavior : ISubscriptionBehavior
         {
-            ProcessBehaviors.Add(typeof(TDispatchBehavior));
+            ProcessBehaviors.Add(typeof(TSubscriptionBehavior));
         }
 
         public static void Process<T>(T objectToHandle)
@@ -36,11 +37,20 @@ namespace TinyHandler
 
         public static TOut Process<T, TOut>(T objectToHandle)
         {
-            var handlerModule = Container.GetInstance<HandlerModule<T>>();
+            var processors = Container.GetAllInstances<IProcessor>().OfType<Processor<T>>();
+
+            if (processors.Count() == 0)
+            {
+                ThreadPool.QueueUserWorkItem(x => PublishSubscriptions(objectToHandle));
+                return default(TOut);
+            }
+
+            if (processors.Count() > 1)
+                throw new ApplicationException("There can only be one process module for each type.");
 
             try
             {
-                IProcessBehavior startOfBehaviorChain = new ProcessBehaviorExecuter<T>(handlerModule.Process);
+                IProcessBehavior startOfBehaviorChain = new ProcessBehaviorExecuter<T>(processors.FirstOrDefault().Process);
 
                 var reveresedBehaviorChain = ProcessBehaviors;
                 reveresedBehaviorChain.Reverse();
@@ -57,13 +67,15 @@ namespace TinyHandler
 
                 }
 
-                return (TOut)startOfBehaviorChain.Invoke(objectToHandle) ;
+                var result = (TOut)startOfBehaviorChain.Invoke(objectToHandle);
+                ThreadPool.QueueUserWorkItem(x => PublishSubscriptions(objectToHandle));
+                return result;
 
             }
             catch (Exception exception)
             {
                 IOnProcessErrorBehavior startOfOnProcessBehaviorChain =
-                    new OnProcessErrorBehaviorExecuter<T>(handlerModule.OnProcessError);
+                    new OnProcessErrorBehaviorExecuter<T>(processors.FirstOrDefault().OnProcessError);
 
                 var reveresedBehaviorChain = OnProcessErrorBehaviors;
                 reveresedBehaviorChain.Reverse();
@@ -84,30 +96,41 @@ namespace TinyHandler
                 throw;
             }
 
-            ThreadPool.QueueUserWorkItem(x => Dispatch(objectToHandle));
+            
         }
 
-        private static void Dispatch<T>(T objectToHandle)
+        private static void PublishSubscriptions<T>(T objectToHandle)
         {
-            var handlerModule = Container.GetInstance<HandlerModule<T>>();
-            IDispatchBehavior startOfDispatchBehaviorChain = new DispatchBehaviorExecuter<T>(handlerModule.Dispatch);
+            var subscriptions = Container.GetAllInstances<ISubscription>().OfType<Subscription<T>>();
 
-            var reveresedDispatchBehaviorChain = DispatchBehaviors;
-            reveresedDispatchBehaviorChain.Reverse();
-
-            foreach (var behviorType in reveresedDispatchBehaviorChain)
+            foreach (var subscriptionModule in subscriptions)
             {
-                var newBehaviour = Container.GetInstance(behviorType) as IDispatchBehavior;
+                try
+                {
+                    ISubscriptionBehavior startOfSubscriptionBehaviorChain = new SubscriptionBehaviorExecuter<T>(subscriptionModule.OnProcessed);
 
-                if (newBehaviour == null)
+                    var reveresedSubscriptionBehaviorChain = SubscriptionBehaviors;
+                    reveresedSubscriptionBehaviorChain.Reverse();
+
+                    foreach (var behviorType in reveresedSubscriptionBehaviorChain)
+                    {
+                        var newBehaviour = Container.GetInstance(behviorType) as ISubscriptionBehavior;
+
+                        if (newBehaviour == null)
+                            continue;
+
+                        newBehaviour.NextBehavior = startOfSubscriptionBehaviorChain;
+                        startOfSubscriptionBehaviorChain = newBehaviour;
+
+                    }
+
+                    startOfSubscriptionBehaviorChain.Invoke(objectToHandle);
+                }
+                catch (Exception)
+                {
                     continue;
-
-                newBehaviour.NextBehavior = startOfDispatchBehaviorChain;
-                startOfDispatchBehaviorChain = newBehaviour;
-
+                }
             }
-
-            startOfDispatchBehaviorChain.Invoke(objectToHandle);
         }
     }
 
@@ -129,19 +152,19 @@ namespace TinyHandler
         }
     }
 
-    public class DispatchBehaviorExecuter<T> : IDispatchBehavior
+    public class SubscriptionBehaviorExecuter<T> : ISubscriptionBehavior
     {
-        public DispatchBehaviorExecuter(Action<T> processAction)
+        public SubscriptionBehaviorExecuter(Action<T> processAction)
         {
-            DispatchAction = processAction;
+            SubscriptionAction = processAction;
         }
-        public IDispatchBehavior NextBehavior { get; set; }
-        public Action<T> DispatchAction { get; set; }
+        public ISubscriptionBehavior NextBehavior { get; set; }
+        public Action<T> SubscriptionAction { get; set; }
 
         public void Invoke(object handledObject)
         {
-            if(DispatchAction != null)
-                DispatchAction.Invoke((T)handledObject);
+            if(SubscriptionAction != null)
+                SubscriptionAction.Invoke((T)handledObject);
         }
     }
 
@@ -163,11 +186,14 @@ namespace TinyHandler
         }
     }
 
-    public abstract class HandlerModule<T>
+    public abstract class Processor<T> : IProcessor
     {
         public Func<T, object> Process { get; set; }
-        public Action<T> Dispatch { get; set; }
         public Action<T, Exception> OnProcessError { get; set; }
+    }
+
+    public interface IProcessor
+    {
     }
 
     public abstract class BasicProcessBehaviour : IProcessBehavior
@@ -192,9 +218,9 @@ namespace TinyHandler
     }
 
 
-    public abstract class BasicDispatchBehaviour : IDispatchBehavior
+    public abstract class BasicSubscriptionBehaviour : ISubscriptionBehavior
     {
-        public IDispatchBehavior NextBehavior { get; set; }
+        public ISubscriptionBehavior NextBehavior { get; set; }
 
         public abstract void Invoke(object handledObject);
 
@@ -205,9 +231,9 @@ namespace TinyHandler
         }
     }
 
-    public interface IDispatchBehavior
+    public interface ISubscriptionBehavior
     {
-        IDispatchBehavior NextBehavior { get; set; }
+        ISubscriptionBehavior NextBehavior { get; set; }
         void Invoke(object handledObject);
     }
 
